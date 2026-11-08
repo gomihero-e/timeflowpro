@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeFlow Pro - カレンダー＆リセット機能付き</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-app: #f8fafc;
+            --bg-sidebar: #ffffff;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #10b981;
+            --success-bg: #ecfdf5;
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --warning: #f59e0b;
+            --warning-bg: #fffbe6;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            --radius: 12px;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-app: #0f172a;
+            --bg-sidebar: #1e293b;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --success: #34d399;
+            --success-bg: #064e3b;
+            --danger: #f87171;
+            --danger-bg: #7f1d1d;
+            --warning: #fbbf24;
+            --warning-bg: #78350f;
+            --border: #334155;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            background-color: var(--bg-app);
+            color: var(--text-main);
+            transition: var(--transition);
+            min-height: 100vh;
+            display: flex;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            width: 100%;
+            position: relative;
+        }
+
+        /* 固定サイドバー */
+        .sidebar {
+            width: 280px;
+            height: 100vh;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            transition: var(--transition);
+            z-index: 100;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        /* ナビゲーションタブ */
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            list-style: none;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: var(--transition);
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: var(--primary);
+            background-color: rgba(79, 70, 229, 0.08);
+        }
+
+        .nav-item.active {
+            font-weight: 600;
+        }
+
+        .stats-panel {
+            background-color: var(--bg-app);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: auto;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            font-feature-settings: "tnum";
+        }
+
+        .theme-toggle-zone {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* メインコンテンツエリア */
+        .main-content {
+            flex: 1;
+            margin-left: 280px; /* サイドバー幅分の余白 */
+            padding: 40px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            transition: var(--transition);
+        }
+
+        /* ビュー（画面）切り替え */
+        .view-section {
+            display: none;
+            animation: fadeIn 0.25s ease forwards;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .view-section.active {
+            display: flex;
+        }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* ダッシュボードレイアウト */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .dash-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dash-card-info h3 {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .dash-card-info p {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .dash-card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        /* 入力フォームカード */
+        .input-card {
+            background-color: var(--bg-card);
+            padding: 24px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .input-form-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr auto;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        input[type="text"], input[type="datetime-local"] {
+            background-color: var(--bg-app);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+            transition: var(--transition);
+            width: 100%;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: var(--transition);
+        }
+
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-secondary { background-color: var(--border); color: var(--text-main); }
+        .btn-secondary:hover { opacity: 0.9; }
+        .btn-danger { background-color: var(--danger); color: white; }
+
+        /* タスクアイテムリスト */
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            list-style: none;
+        }
+
+        .task-item {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            gap: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .task-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .task-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex: 1;
+        }
+
+        .checkbox-container {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-container input { opacity: 0; width: 0; height: 0; position: absolute; }
+
+        .checkmark {
+            height: 22px;
+            width: 22px;
+            border: 2px solid var(--text-muted);
+            border-radius: 6px;
+            display: inline-block;
+            position: relative;
+        }
+
+        .checkbox-container input:checked ~ .checkmark {
+            background-color: var(--success);
+            border-color: var(--success);
+        }
+
+        .checkmark::after {
+            content: ""; position: absolute; display: none;
+            left: 7px; top: 3px; width: 5px; height: 10px;
+            border: solid white; border-width: 0 2.5px 2.5px 0;
+            transform: rotate(45deg);
+        }
+
+        .checkbox-container input:checked ~ .checkmark::after { display: block; }
+
+        .task-info-block {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .task-name {
+            font-size: 16px;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .task-item.completed .task-name {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+
+        /* 期限・残り時間バッジ */
+        .badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 12px;
+        }
+
+        .badge-normal { background-color: var(--border); color: var(--text-main); }
+        .badge-warning { background-color: #fff3cd; color: #856404; }
+        .badge-danger { background-color: #f8d7da; color: #721c24; }
+        [data-theme="dark"] .badge-warning { background-color: #664d03; color: #fff; }
+        [data-theme="dark"] .badge-danger { background-color: #842029; color: #fff; }
+
+        .task-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .time-display {
+            font-family: 'Inter', monospace;
+            font-size: 18px;
+            font-weight: 600;
+            font-feature-settings: "tnum";
+            min-width: 85px;
+            text-align: right;
+        }
+
+        .task-item.running .time-display { color: var(--success); }
+
+        .pulse-indicator {
+            width: 8px; height: 8px; background-color: var(--success);
+            border-radius: 50%; display: none;
+        }
+
+        .task-item.running .pulse-indicator {
+            display: inline-block; animation: pulse 1.5s infinite;
+        }
+
+        /* アクションボタン各種 */
+        .btn-action {
+            width: 36px; height: 36px; border-radius: 8px; border: none;
+            cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+            font-size: 14px; background-color: var(--bg-app); color: var(--text-main);
+            transition: var(--transition);
+        }
+
+        .btn-action:hover { background-color: var(--border); }
+        .btn-timer-toggle:hover { background-color: var(--primary); color: white; }
+        .task-item.running .btn-timer-toggle { background-color: var(--success-bg); color: var(--success); }
+        .btn-reset-timer:hover { background-color: var(--warning-bg); color: var(--warning); }
+        .btn-delete:hover { background-color: var(--danger-bg); color: var(--danger); }
+
+        /* カレンダー表示 */
+        .calendar-container {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            text-align: center;
+        }
+
+        .calendar-day-label {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-muted);
+            padding: 10px 0;
+        }
+
+        .calendar-cell {
+            min-height: 90px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            background-color: var(--bg-app);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .calendar-cell.other-month { opacity: 0.3; }
+        .calendar-cell.current-day { border-color: var(--primary); background-color: rgba(79, 70, 229, 0.03); }
+
+        .day-number {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .calendar-tasks-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .calendar-task-dot {
+            width: 100%;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: left;
+            margin-bottom: 2px;
+            cursor: pointer;
+        }
+        .dot-incomplete { background-color: rgba(79, 70, 229, 0.15); color: var(--primary); }
+        .dot-completed { background-color: rgba(16, 185, 129, 0.15); color: var(--success); text-decoration: line-through; }
+
+        /* モーダルダイアログ共通 */
+        .modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.5); display: none;
+            align-items: center; justify-content: center; z-index: 1000;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal.active { display: flex; }
+
+        .modal-content {
+            background-color: var(--bg-card);
+            border-radius: var(--radius);
+            max-width: 480px; width: 100%;
+            padding: 28px; box-shadow: var(--shadow);
+            display: flex; flex-direction: column; gap: 20px;
+        }
+
+        .modal-header { font-size: 18px; font-weight: 700; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; }
+
+        /* スイッチスタイル */
+        .theme-switch { position: relative; display: inline-block; width: 46px; height: 24px; }
+        .theme-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1; transition: .2s; border-radius: 24px;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 4px;
+        }
+        .slider::before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .2s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider::before { transform: translateX(22px); }
+        .slider i { font-size: 10px; color: #fff; z-index: 1; }
+
+        .empty-state {
+            text-align: center; padding: 40px 20px; color: var(--text-muted);
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+        }
+        .empty-state i { font-size: 40px; color: var(--border); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        @media (max-width: 850px) {
+            .sidebar { width: 100%; height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--border); }
+            .main-content { margin-left: 0; padding: 20px; }
+            .app-container { flex-direction: column; }
+            .input-form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- 固定サイドバー -->
+    <aside class="sidebar">
+        <div class="logo-area">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>TimeFlow Pro</span>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item active" data-tab="dashboard">
+                <i class="fa-solid fa-chart-pie"></i> ダッシュボード
+            </li>
+            <li class="nav-item" data-tab="tasks">
+                <i class="fa-solid fa-list-check"></i> タスク一覧
+            </li>
+            <li class="nav-item" data-tab="calendar-tab">
+                <i class="fa-solid fa-calendar-days"></i> カレンダー確認
+            </li>
+        </ul>
+
+        <div class="stats-panel">
+            <div class="stat-item">
+                <span class="stat-label">トータル作業時間</span>
+                <span class="stat-value" id="globalTotalTime">00:00:00</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">未完了タスク</span>
+                <span class="stat-value" id="globalIncompleteCount">0</span>
+            </div>
+        </div>
+
+        <div class="theme-toggle-zone">
+            <span class="stat-label" style="font-size: 13px;">ダークモード</span>
+            <label class="theme-switch">
+                <input type="checkbox" id="themeToggle">
+                <span class="slider">
+                    <i class="fa-solid fa-sun"></i>
+                    <i class="fa-solid fa-moon"></i>
+                </span>
+            </label>
+        </div>
+    </aside>
+
+    <!-- メインコンテンツ -->
+    <main class="main-content">
+        
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboard" class="view-section active">
+            <h1>ダッシュボード概要</h1>
+            <div class="dashboard-grid">
+                <div class="dash-card">
+                    <div class="dash-card-info">
+                        <h3>総計測時間</h3>
+                        <p id="dashTotalTime">00:00:00</p>
+                    </div>
+                    <div class="dash-card-icon" style="background-color: rgba(79,70,229,0.1); color: var(--primary);">
+                        <i class="fa-solid fa-hourglass-high"></i>
+                    </div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-info">
+                        <h3>進行中タスク</h3>
+                        <p id="dashIncompleteCount">0</p>
+                    </div>
+                    <div class="dash-card-icon" style="background-color: rgba(245,158,11,0.1); color: var(--warning);">
+                        <i class="fa-solid fa-spinner"></i>
+                    </div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-info">
+                        <h3>完了済みタスク</h3>
+                        <p id="dashCompletedCount">0</p>
+                    </div>
+                    <div class="dash-card-icon" style="background-color: rgba(16,185,129,0.1); color: var(--success);">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h2 style="font-size: 18px; margin-bottom: 15px; color: var(--text-muted);">直近の締め切りタスク (上位3件)</h2>
+                <ul class="task-list" id="dashUrgentList"></ul>
+            </div>
+        </div>
+
+        <!-- TASK LIST VIEW -->
+        <div id="tasks" class="view-section">
+            <h1>タスク管理</h1>
+            
+            <div class="input-card">
+                <div class="input-form-grid">
+                    <div class="form-group">
+                        <label for="taskNameInput">タスク名</label>
+                        <input type="text" id="taskNameInput" placeholder="新しいタスクを入力..." autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDeadlineInput">終了期限</label>
+                        <input type="datetime-local" id="taskDeadlineInput">
+                    </div>
+                    <button class="btn btn-primary" id="addTaskBtn">
+                        <i class="fa-solid fa-plus"></i> 追加
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h2 style="font-size: 18px; margin-bottom: 15px; color: var(--text-muted);">すべてのタスク</h2>
+                <ul class="task-list" id="mainTaskList"></ul>
+            </div>
+        </div>
+
+        <!-- CALENDAR VIEW -->
+        <div id="calendar-tab" class="view-section">
+            <h1>カレンダー確認</h1>
+            <p style="color: var(--text-muted); font-size: 14px;">日付ごとのタスク（期限日または完了日）を一覧で確認できます。</p>
+            
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button class="btn btn-secondary" id="prevMonthBtn"><i class="fa-solid fa-chevron-left"></i></button>
+                    <h2 id="calendarMonthLabel" style="font-size: 18px; font-weight: 700;"></h2>
+                    <button class="btn btn-secondary" id="nextMonthBtn"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <div class="calendar-grid" id="calendarGrid">
+                    <!-- JSで動的に展開 -->
+                </div>
+            </div>
+
+            <div class="calendar-tasks-container">
+                <h2 id="selectedDateTitle" style="font-size: 18px; color: var(--text-muted);">選択した日のタスクリスト</h2>
+                <ul class="task-list" id="calendarDayTaskList"></ul>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- 編集モーダル -->
+<div class="modal" id="editModal">
+    <div class="modal-content">
+        <div class="modal-header">タスクの編集</div>
+        <input type="hidden" id="editTaskId">
+        <div class="form-group">
+            <label>タスク名</label>
+            <input type="text" id="editTaskName">
+        </div>
+        <div class="form-group">
+            <label>終了期限</label>
+            <input type="datetime-local" id="editTaskDeadline">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('editModal')">キャンセル</button>
+            <button class="btn btn-primary" id="saveEditBtn">変更を保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- リセット警告確認モーダル -->
+<div class="modal" id="resetConfirmModal">
+    <div class="modal-content">
+        <div class="modal-header" style="color: var(--danger);"><i class="fa-solid fa-circle-exclamation"></i> タイマーのリセット確認</div>
+        <p style="font-size: 15px; color: var(--text-main); line-height: 1.5;">
+            このタスクの計測時間を完全にリセットして **00:00:00** に戻しますか？<br>この操作は取り消せる実感がありません。
+        </p>
+        <input type="hidden" id="resetTaskId">
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('resetConfirmModal')">いいえ、戻る</button>
+            <button class="btn btn-danger" id="confirmResetBtn">はい、リセットする</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let tasks = [];
+    let intervalId = null;
+    let currentCalendarDate = new Date();
+    let selectedCalendarDateStr = "";
+
+    const taskNameInput = document.getElementById('taskNameInput');
+    const taskDeadlineInput = document.getElementById('taskDeadlineInput');
+    const addTaskBtn = document.getElementById('addTaskBtn');
+    const mainTaskList = document.getElementById('mainTaskList');
+    const dashUrgentList = document.getElementById('dashUrgentList');
+    const calendarGrid = document.getElementById('calendarGrid');
+    const calendarMonthLabel = document.getElementById('calendarMonthLabel');
+    const calendarDayTaskList = document.getElementById('calendarDayTaskList');
+    const selectedDateTitle = document.getElementById('selectedDateTitle');
+    const themeToggle = document.getElementById('themeToggle');
+
+    const globalTotalTime = document.getElementById('globalTotalTime');
+    const globalIncompleteCount = document.getElementById('globalIncompleteCount');
+    const dashTotalTime = document.getElementById('dashTotalTime');
+    const dashIncompleteCount = document.getElementById('dashIncompleteCount');
+    const dashCompletedCount = document.getElementById('dashCompletedCount');
+
+    window.addEventListener('DOMContentLoaded', () => {
+        initTheme();
+        setDefaultDeadline();
+        loadTasks();
+        initTabs();
+        initCalendarNav();
+        
+        selectedCalendarDateStr = formatDateKey(new Date());
+        
+        renderAll();
+        startGlobalTicker();
+    });
+
+    function initTheme() {
+        const savedTheme = localStorage.getItem('tf_pro_theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        themeToggle.checked = (savedTheme === 'dark');
+        themeToggle.addEventListener('change', () => {
+            const theme = themeToggle.checked ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('tf_pro_theme', theme);
+        });
+    }
+
+    function setDefaultDeadline() {
+        const now = new Date();
+        now.setDate(now.getDate() + 1);
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        taskDeadlineInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    function initTabs() {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+                
+                item.classList.add('active');
+                const targetTab = item.getAttribute('data-tab');
+                document.getElementById(targetTab).classList.add('active');
+                
+                if (targetTab === 'calendar-tab') {
+                    renderCalendar();
+                }
+            });
+        });
+    }
+
+    addTaskBtn.addEventListener('click', addTask);
+    taskNameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
+
+    function addTask() {
+        const name = taskNameInput.value.trim();
+        const deadlineVal = taskDeadlineInput.value;
+        if (!name || !deadlineVal) return;
+
+        const newTask = {
+            id: Date.now().toString(),
+            name: name,
+            deadline: new Date(deadlineVal).getTime(),
+            elapsedTime: 0,
+            isRunning: false,
+            startTime: null,
+            isCompleted: false,
+            completedAt: null
+        };
+
+        tasks.push(newTask);
+        saveTasks();
+        renderAll();
+        taskNameInput.value = '';
+        setDefaultDeadline();
+    }
+
+    function toggleTimer(id) {
+        const now = Date.now();
+        tasks = tasks.map(task => {
+            if (task.id === id) {
+                if (task.isCompleted) return task;
+                if (task.isRunning) {
+                    const sessionSecs = Math.floor((now - task.startTime) / 1000);
+                    return { ...task, elapsedTime: task.elapsedTime + sessionSecs, isRunning: false, startTime: null };
+                } else {
+                    return { ...task, isRunning: true, startTime: now };
+                }
+            }
+            return task;
+        });
+        saveTasks();
+        renderAll();
+    }
+
+    function openResetConfirm(id) {
+        document.getElementById('resetTaskId').value = id;
+        openModal('resetConfirmModal');
+    }
+
+    document.getElementById('confirmResetBtn').addEventListener('click', () => {
+        const id = document.getElementById('resetTaskId').value;
+        tasks = tasks.map(task => {
+            if (task.id === id) {
+                return { ...task, elapsedTime: 0, isRunning: false, startTime: null };
+            }
+            return task;
+        });
+        saveTasks();
+        closeModal('resetConfirmModal');
+        renderAll();
+    });
+
+    function toggleComplete(id) {
+        const now = Date.now();
+        tasks = tasks.map(task => {
+            if (task.id === id) {
+                let updated = { ...task, isCompleted: !task.isCompleted };
+                if (updated.isCompleted) {
+                    if (updated.isRunning) {
+                        const sessionSecs = Math.floor((now - updated.startTime) / 1000);
+                        updated.elapsedTime += sessionSecs;
+                        updated.isRunning = false;
+                        updated.startTime = null;
+                    }
+                    updated.completedAt = now;
+                } else {
+                    updated.completedAt = null;
+                }
+                return updated;
+            }
+            return task;
+        });
+        saveTasks();
+        renderAll();
+    }
+
+    function openEditModal(id) {
+        const task = tasks.find(t => t.id === id);
+        if (!task) return;
+        document.getElementById('editTaskId').value = id;
+        document.getElementById('editTaskName').value = task.name;
+        
+        const d = new Date(task.deadline);
+        const formatStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        document.getElementById('editTaskDeadline').value = formatStr;
+        
+        openModal('editModal');
+    }
+
+    document.getElementById('saveEditBtn').addEventListener('click', () => {
+        const id = document.getElementById('editTaskId').value;
+        const name = document.getElementById('editTaskName').value.trim();
+        const deadlineVal = document.getElementById('editTaskDeadline').value;
+        
+        if (!name || !deadlineVal) return;
+
+        tasks = tasks.map(task => {
+            if (task.id === id) {
+                return { ...task, name: name, deadline: new Date(deadlineVal).getTime() };
+            }
+            return task;
+        });
+        
+        saveTasks();
+        closeModal('editModal');
+        renderAll();
+    });
+
+    function deleteTask(id) {
+        tasks = tasks.filter(t => t.id !== id);
+        saveTasks();
+        renderAll();
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    function startGlobalTicker() {
+        if (intervalId) clearInterval(intervalId);
+        intervalId = setInterval(() => {
+            const now = Date.now();
+            let currentGlobalTotalSecs = 0;
+
+            tasks.forEach(task => {
+                let currentTaskSecs = task.elapsedTime;
+                if (task.isRunning && task.startTime) {
+                    currentTaskSecs += Math.floor((now - task.startTime) / 1000);
+                    const el = document.getElementById(`time-${task.id}`);
+                    if (el) el.textContent = formatTime(currentTaskSecs);
+                    
+                    const elDash = document.getElementById(`dash-time-${task.id}`);
+                    if (elDash) elDash.textContent = formatTime(currentTaskSecs);
+                }
+                currentGlobalTotalSecs += currentTaskSecs;
+            });
+
+            globalTotalTime.textContent = formatTime(currentGlobalTotalSecs);
+            dashTotalTime.textContent = formatTime(currentGlobalTotalSecs);
+        }, 1000);
+    }
+
+    function renderAll() {
+        tasks.sort((a, b) => {
+            if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
+            return a.deadline - b.deadline;
+        });
+
+        renderTaskList(mainTaskList, tasks, false);
+        
+        const urgentTasks = tasks.filter(t => !t.isCompleted).slice(0, 3);
+        renderTaskList(dashUrgentList, urgentTasks, true);
+
+        updateStatistics();
+        renderCalendar();
+        renderCalendarDayTasks();
+    }
+
+    function renderTaskList(targetElement, list, isDashShortForm = false) {
+        targetElement.innerHTML = '';
+        if (list.length === 0) {
+            targetElement.innerHTML = `
+                <div class="empty-state">
+                    <i class="fa-regular fa-folder-open"></i>
+                    <p>該当するタスクはありません。</p>
+                </div>`;
+            return;
+        }
+
+        const now = Date.now();
+        list.forEach(task => {
+            let totalSecs = task.elapsedTime;
+            if (task.isRunning && task.startTime) {
+                totalSecs += Math.floor((now - task.startTime) / 1000);
+            }
+
+            let remainingText = "";
+            let badgeClass = "badge-normal";
+            
+            if (task.isCompleted) {
+                remainingText = "完了済み";
+            } else {
+                const diff = task.deadline - now;
+                if (diff < 0) {
+                    remainingText = "期限超過";
+                    badgeClass = "badge-danger";
+                } else {
+                    const diffMins = Math.floor(diff / 60000);
+                    const diffHours = Math.floor(diffMins / 60);
+                    const diffDays = Math.floor(diffHours / 24);
+                    
+                    if (diffDays > 0) {
+                        remainingText = `残り ${diffDays}日 ${diffHours % 24}時間`;
+                    } else if (diffHours > 0) {
+                        remainingText = `残り ${diffHours}時間 ${diffMins % 60}分`;
+                        if (diffHours < 24) badgeClass = "badge-warning";
+                    } else {
+                        remainingText = `残り ${diffMins}分`;
+                        badgeClass = "badge-danger";
+                    }
+                }
+            }
+
+            const dStr = new Date(task.deadline).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const li = document.createElement('li');
+            li.className = `task-item ${task.isRunning ? 'running' : ''} ${task.isCompleted ? 'completed' : ''}`;
+            
+            const timeId = isDashShortForm ? `dash-time-${task.id}` : `time-${task.id}`;
+
+            li.innerHTML = `
+                <div class="task-left">
+                    <label class="checkbox-container">
+                        <input type="checkbox" ${task.isCompleted ? 'checked' : ''} onchange="toggleComplete('${task.id}')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div class="task-info-block">
+                        <span class="task-name">${escapeHTML(task.name)}</span>
+                        <div class="task-meta">
+                            <span><i class="fa-regular fa-calendar"></i> 期限: ${dStr}</span>
+                            <span class="badge ${badgeClass}">${remainingText}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="task-right">
+                    <span class="pulse-indicator"></span>
+                    <span id="${timeId}" class="time-display">${formatTime(totalSecs)}</span>
+                    
+                    <button class="btn-action btn-timer-toggle" onclick="toggleTimer('${task.id}')" title="スタート/ストップ" ${task.isCompleted ? 'disabled style="opacity:0.2;"' : ''}>
+                        <i class="fa-solid ${task.isRunning ? 'fa-pause' : 'fa-play'}"></i>
+                    </button>
+                    
+                    ${!isDashShortForm ? `
+                    <button class="btn-action btn-reset-timer" onclick="openResetConfirm('${task.id}')" title="タイマーリセット">
+                        <i class="fa-solid fa-arrow-rotate-left"></i>
+                    </button>
+                    <button class="btn-action btn-edit" onclick="openEditModal('${task.id}')" title="編集">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <button class="btn-action btn-delete" onclick="deleteTask('${task.id}')" title="削除">
+                        <i class="fa-regular fa-trash-can"></i>
+                    </button>
+                    ` : ''}
+                </div>
+            `;
+            targetElement.appendChild(li);
+        });
+    }
+
+    function initCalendarNav() {
+        document.getElementById('prevMonthBtn').addEventListener('click', () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+            renderCalendar();
+        });
+        document.getElementById('nextMonthBtn').addEventListener('click', () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+            renderCalendar();
+        });
+    }
+
+    function renderCalendar() {
+        calendarGrid.innerHTML = '';
+        const year = currentCalendarDate.getFullYear();
+        const month = currentCalendarDate.getMonth();
+        
+        calendarMonthLabel.textContent = `${year}年 ${month + 1}月`;
+
+        const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+        dayLabels.forEach(lbl => {
+            const div = document.createElement('div');
+            div.className = 'calendar-day-label';
+            div.textContent = lbl;
+            calendarGrid.appendChild(div);
+        });
+
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        
+        const startOffset = firstDay.getDay();
+        const prevLastDay = new Date(year, month, 0).getDate();
+
+        for (let i = startOffset - 1; i >= 0; i--) {
+            createCell(prevLastDay - i, true, new Date(year, month - 1, prevLastDay - i));
+        }
+
+        const todayStr = formatDateKey(new Date());
+        for (let d = 1; d <= lastDay.getDate(); d++) {
+            const dateObj = new Date(year, month, d);
+            const isToday = formatDateKey(dateObj) === todayStr;
+            createCell(d, false, dateObj, isToday);
+        }
+
+        const totalCells = calendarGrid.children.length - 7;
+        const nextMonthCells = 42 - totalCells;
+        for (let d = 1; d <= nextMonthCells; d++) {
+            createCell(d, true, new Date(year, month + 1, d));
+        }
+    }
+
+    function createCell(dayNum, isOtherMonth, dateObj, isToday = false) {
+        const cell = document.createElement('div');
+        cell.className = `calendar-cell ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'current-day' : ''}`;
+        
+        const dateStr = formatDateKey(dateObj);
+        if (dateStr === selectedCalendarDateStr) {
+            cell.style.backgroundColor = 'rgba(79, 70, 229, 0.1)';
+            cell.style.borderColor = 'var(--primary)';
+        }
+
+        cell.innerHTML = `<span class="day-number">${dayNum}</span>`;
+        
+        const dayTasks = tasks.filter(t => {
+            const deadlineKey = formatDateKey(new Date(t.deadline));
+            const completedKey = t.completedAt ? formatDateKey(new Date(t.completedAt)) : "";
+            return deadlineKey === dateStr || completedKey === dateStr;
+        });
+
+        dayTasks.slice(0, 3).forEach(t => {
+            const dot = document.createElement('div');
+            dot.className = `calendar-task-dot ${t.isCompleted ? 'dot-completed' : 'dot-incomplete'}`;
+            dot.textContent = t.name;
+            cell.appendChild(dot);
+        });
+
+        if (dayTasks.length > 3) {
+            const more = document.createElement('div');
+            more.style.fontSize = '10px';
+            more.style.color = 'var(--text-muted)';
+            more.textContent = `他 ${dayTasks.length - 3} 件`;
+            cell.appendChild(more);
+        }
+
+        cell.addEventListener('click', () => {
+            selectedCalendarDateStr = dateStr;
+            renderCalendar();
+            renderCalendarDayTasks();
+        });
+
+        calendarGrid.appendChild(cell);
+    }
+
+    function renderCalendarDayTasks() {
+        if (!selectedCalendarDateStr) return;
+        
+        const d = new Date(selectedCalendarDateStr);
+        selectedDateTitle.textContent = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日のタスク・期限実績`;
+
+        const dayTasks = tasks.filter(t => {
+            const deadlineKey = formatDateKey(new Date(t.deadline));
+            const completedKey = t.completedAt ? formatDateKey(new Date(t.completedAt)) : "";
+            return deadlineKey === selectedCalendarDateStr || completedKey === selectedCalendarDateStr;
+        });
+
+        renderTaskList(calendarDayTaskList, dayTasks, true);
+    }
+
+    function updateStatistics() {
+        const total = tasks.length;
+        const incomplete = tasks.filter(t => !t.isCompleted).length;
+        const completed = total - incomplete;
+
+        globalIncompleteCount.textContent = incomplete;
+        dashIncompleteCount.textContent = incomplete;
+        dashCompletedCount.textContent = completed;
+        
+        const now = Date.now();
+        let totalSecs = 0;
+        tasks.forEach(t => {
+            totalSecs += t.elapsedTime;
+            if (t.isRunning && t.startTime) {
+                totalSecs += Math.floor((now - t.startTime) / 1000);
+            }
+        });
+        
+        globalTotalTime.textContent = formatTime(totalSecs);
+        dashTotalTime.textContent = formatTime(totalSecs);
+    }
+
+    function formatTime(totalSeconds) {
+        const hrs = Math.floor(totalSeconds / 3600);
+        const mins = Math.floor((totalSeconds % 3600) / 60);
+        const secs = totalSeconds % 60;
+        return [
+            hrs.toString().padStart(2, '0'),
+            mins.toString().padStart(2, '0'),
+            secs.toString().padStart(2, '0')
+        ].join(':');
+    }
+
+    function formatDateKey(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function saveTasks() { localStorage.setItem('tf_pro_tasks', JSON.stringify(tasks)); }
+    function loadTasks() {
+        const stored = localStorage.getItem('tf_pro_tasks');
+        if (stored) { try { tasks = JSON.parse(stored); } catch (e) { tasks = []; } }
+    }
+
+    function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+    }
+</script>
+</body>
+</html>
